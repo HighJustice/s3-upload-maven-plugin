@@ -1,6 +1,7 @@
 package com.bazaarvoice.maven.plugins.s3.upload;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -18,7 +19,10 @@ import com.amazonaws.internal.StaticCredentialsProvider;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.AccessControlList;
+import com.amazonaws.services.s3.model.CanonicalGrantee;
+import com.amazonaws.services.s3.model.Grantee;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.Permission;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.StorageClass;
 import com.amazonaws.services.s3.transfer.Transfer;
@@ -74,8 +78,8 @@ public class S3UploadMojo extends AbstractMojo
   @Parameter(property = "s3-upload.useReducedRedundancy", defaultValue = "false")
   private boolean useReducedRedundancy;
 
-  @Parameter(property = "s3-upload.readGranteesList", required=false)
-  private List<String> readGranteesList;
+  @Parameter(property = "s3-upload.readGrantees", required=false)
+  private List<String> readGrantees;
 
   @Parameter(property = "s3-upload.propagateBucketAcl", defaultValue = "false")
   private boolean propagateBucketAcl;
@@ -155,14 +159,27 @@ public class S3UploadMojo extends AbstractMojo
       AmazonClientException ace = transfer.waitForException();
       getLog().info("Transferred " + transfer.getProgress().getBytesTransfered() + " bytes.");
 
-      if (propagateBucketAcl){
-    	  getLog().info("propagating ACL from bucket: "+bucketName+" to "+fileName);
-    	  s3.setObjectAcl(bucketName, destination, s3.getBucketAcl(bucketName));
-      }
       if (ace !=null){
     	  getLog().error("Exception risen during upload: "+ace);
     	  throw ace;
       }
+
+      if (propagateBucketAcl){
+    	  getLog().info("propagating ACL from bucket: "+bucketName+" to "+fileName);
+    	  s3.setObjectAcl(bucketName, destination, s3.getBucketAcl(bucketName));
+      }
+
+      if (readGrantees!= null){
+    	  getLog().info("applying additional security permissions..");
+    	  AccessControlList acl = s3.getObjectAcl(bucketName, destination);
+    	  for (String readGrantee: readGrantees){
+    		  getLog().info("\t read permission for grantee ID: "+readGrantee);
+    		  Grantee grantee = new CanonicalGrantee(readGrantee);
+    		  acl.grantPermission(grantee, Permission.Read);
+    	  }
+    	  s3.setObjectAcl(bucketName, destination, acl);
+      }
+
     } catch (InterruptedException e) {
       return false;
     }
