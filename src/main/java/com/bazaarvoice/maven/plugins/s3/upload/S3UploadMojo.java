@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import com.amazonaws.services.s3.model.*;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -18,13 +19,6 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.internal.StaticCredentialsProvider;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.AccessControlList;
-import com.amazonaws.services.s3.model.CanonicalGrantee;
-import com.amazonaws.services.s3.model.Grantee;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.Permission;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.model.StorageClass;
 import com.amazonaws.services.s3.transfer.Transfer;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.Upload;
@@ -83,6 +77,9 @@ public class S3UploadMojo extends AbstractMojo
 
   @Parameter(property = "s3-upload.propagateBucketAcl", defaultValue = "false")
   private boolean propagateBucketAcl;
+
+  @Parameter(property = "s3-upload.pubAcl", defaultValue = "false")
+  private boolean pubAcl;
 
   @Override
   public void execute() throws MojoExecutionException
@@ -160,12 +157,12 @@ public class S3UploadMojo extends AbstractMojo
       getLog().info("Transferred " + transfer.getProgress().getBytesTransfered() + " bytes.");
 
       if (ace !=null){
-    	  getLog().error("Exception risen during upload: "+ace);
+    	  getLog().error("Exception risen during upload: " + ace);
     	  throw ace;
       }
 
       if (propagateBucketAcl){
-    	  getLog().info("propagating ACL from bucket: "+bucketName+" to "+fileName);
+    	  getLog().info("propagating ACL from bucket: " + bucketName + " to " + fileName);
     	  s3.setObjectAcl(bucketName, destination, s3.getBucketAcl(bucketName));
       }
 
@@ -178,6 +175,9 @@ public class S3UploadMojo extends AbstractMojo
     		  acl.grantPermission(grantee, Permission.Read);
     	  }
     	  s3.setObjectAcl(bucketName, destination, acl);
+      } else if(pubAcl) {
+          getLog().info("applying public permissions.. " + fileName);
+          s3.setObjectAcl(bucketName, destination, CannedAccessControlList.PublicRead);
       }
 
     } catch (InterruptedException e) {
