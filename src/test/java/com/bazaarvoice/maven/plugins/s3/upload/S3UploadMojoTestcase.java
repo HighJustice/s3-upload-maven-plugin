@@ -6,6 +6,9 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
@@ -13,7 +16,7 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.*;
 import org.apache.maven.plugin.testing.AbstractMojoTestCase;
 
 public class S3UploadMojoTestcase extends AbstractMojoTestCase {
@@ -55,16 +58,20 @@ public class S3UploadMojoTestcase extends AbstractMojoTestCase {
 
             AWSCredentialsProvider provider = new DefaultAWSCredentialsProviderChain();
             AmazonS3 s3 = new AmazonS3Client(provider);
-            String s = URLDecoder.decode(s3.getObject("bloomfire-artifacts", "screencast-installer/2.0.0/" + UPLOAD_FILE_NAME_FOR_PUBLIC).getObjectContent().getHttpRequest().getURI().toString(), "UTF-8");
-            URL url = new URL(s);
-            ReadableByteChannel rbc = Channels.newChannel(url.openStream());
-            FileOutputStream fos = new FileOutputStream(UPLOAD_FILE_NAME_FOR_PUBLIC);
-            fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-
-            File file = new File(UPLOAD_FILE_NAME_FOR_PUBLIC);
-            boolean b = file.exists();
+            AccessControlList acl = s3.getObjectAcl("bloomfire-artifacts", "screencast-installer/2.0.0/" + UPLOAD_FILE_NAME_FOR_PUBLIC);
+            Set<Grant> grants = acl.getGrants();
+            List<String> slist = new ArrayList<String>();
+            for (Grant g : grants) {
+                Permission perm =  g.getPermission();
+                slist.add(perm.name());
+            }
+            boolean b = slist.containsAll(new ArrayList<String>(){
+                {
+                    add("Read");
+                    add("FullControl");
+                }
+            });
             assertTrue(b);
-            file.delete();
         } catch (Throwable ex) {
             assertNull("Public access. Exception raised: ", ex);
         }
