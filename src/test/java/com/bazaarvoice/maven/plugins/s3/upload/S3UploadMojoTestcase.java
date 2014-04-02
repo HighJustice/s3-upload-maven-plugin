@@ -64,6 +64,7 @@ public class S3UploadMojoTestcase extends AbstractMojoTestCase {
             File file = new File(UPLOAD_FILE_NAME_FOR_PUBLIC);
             boolean b = file.exists();
             assertTrue(b);
+            file.delete();
         } catch (Throwable ex) {
             assertNull("Public access. Exception raised: ", ex);
         }
