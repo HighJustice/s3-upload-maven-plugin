@@ -78,8 +78,8 @@ public class S3UploadMojo extends AbstractMojo
   @Parameter(property = "s3-upload.propagateBucketAcl", defaultValue = "false")
   private boolean propagateBucketAcl;
 
-  @Parameter(property = "s3-upload.pubAcl", defaultValue = "false")
-  private boolean pubAcl;
+  @Parameter(property = "s3-upload.publicAccess", defaultValue = "false")
+  private boolean publicAccess;
 
   @Override
   public void execute() throws MojoExecutionException
@@ -175,8 +175,8 @@ public class S3UploadMojo extends AbstractMojo
     		  acl.grantPermission(grantee, Permission.Read);
     	  }
     	  s3.setObjectAcl(bucketName, destination, acl);
-      } else if(pubAcl) {
-          getLog().info("applying public permissions.. " + fileName);
+      } else if(publicAccess) {
+          getLog().info("applying public permissions to .. " + fileName);
           s3.setObjectAcl(bucketName, destination, CannedAccessControlList.PublicRead);
       }
 
